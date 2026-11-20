@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import sys
+import time
 from typing import Sequence
 
 from .hands import Hand, Punctuation
@@ -81,6 +82,7 @@ def _load(args: argparse.Namespace):
     name = resolve_model(args.model)
     print(f"model: {name}", file=sys.stderr)
     model, tokenizer = load_model(name, args.adapter_path)
+    print("building token mask (first run for this model is slower)...", file=sys.stderr)
     if args.no_cache:
         mask = build_mask(tokenizer, hand, punctuation)
     else:
@@ -103,9 +105,18 @@ def cmd_generate(args: argparse.Namespace) -> int:
         seed=args.seed,
     )
     prompt_ids = build_prompt(tokenizer, args.prompt, hand, hint=not args.no_hint)
+    started = time.perf_counter()
+
+    def progress(done: int, candidate) -> None:
+        elapsed = time.perf_counter() - started
+        print(f"\rsampling {done}/{args.num_candidates}  ({elapsed:.0f}s)",
+              end="", file=sys.stderr, flush=True)
+
+    print("sampling...", end="", file=sys.stderr, flush=True)
     candidates = sample_candidates(
-        model, tokenizer, prompt_ids, mask, config, args.num_candidates
+        model, tokenizer, prompt_ids, mask, config, args.num_candidates, progress
     )
+    print("\nscoring...", file=sys.stderr, flush=True)
     results, rejected = rerank(
         candidates,
         lambda tokens: mean_logprob(model, prompt_ids, tokens),

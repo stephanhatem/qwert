@@ -90,9 +90,10 @@ Why Gemma: instruction-tuned, no "thinking" mode to switch off, and a
 large SentencePiece vocabulary (about 262k entries according to
 mlx-lm's Gemma 4 model code), which gives the mask more whole words to
 keep. Quantisation-aware-trained (QAT) 4-bit builds lose less quality
-than ordinary 4-bit ones. A 12B model at 4 bits is roughly 7-8 GB of
-weights, which fits in 16 GB with the browser closed; anything much
-larger does not.
+than ordinary 4-bit ones. The `quality` model is an 11 GB
+download, which is tight on a 16 GB machine: close other apps first,
+and expect it to be much slower than `default` if macOS starts
+swapping.
 
 **What has been verified.** The `default` model downloads, loads and
 generates on a 16 GB M4 (see results below). The mlx-lm API was read

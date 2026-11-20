@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Callable
 
 import mlx.core as mx
 from mlx_lm.generate import generate_step
@@ -106,6 +106,7 @@ def sample_candidates(
     mask: TokenMask,
     config: SamplingConfig,
     n: int,
+    on_candidate: Callable[[int, Candidate], None] | None = None,
 ) -> list[Candidate]:
     """Sample ``n`` candidates one after another.
 
@@ -115,4 +116,9 @@ def sample_candidates(
     """
     if config.seed is not None:
         mx.random.seed(config.seed)
-    return [sample_one(model, tokenizer, prompt_ids, mask, config) for _ in range(n)]
+    candidates: list[Candidate] = []
+    for index in range(n):
+        candidates.append(sample_one(model, tokenizer, prompt_ids, mask, config))
+        if on_candidate is not None:
+            on_candidate(index + 1, candidates[-1])
+    return candidates
