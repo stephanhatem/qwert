@@ -46,7 +46,7 @@ qwert generate --hand left --prompt "Write a short poem about the sea" -n 20 --t
 Each result is printed with its score and its length in characters:
 
 ```
-[1] score -2.413  (logprob -2.313, repeats 5%)  87 chars
+[1] score -2.413  (logprob -2.313, repeats 5%, non-words 0%)  87 chars
 <text>
 ```
 
@@ -71,6 +71,8 @@ Useful `generate` options:
 | `--repetition-penalty` | 1.15 | mlx-lm's penalty over the last `--repetition-context` (64) tokens; 1.0 disables |
 | `--no-repeat-ngram` | 3 | never repeat a token n-gram of this size; 0 disables |
 | `--repeat-weight` | 2.0 | rerank penalty for repeated words |
+| `--nonword-weight` | 3.0 | rerank penalty for non-words such as "Zzzt"; needs `wordfreq` (the `stats` extra); 0 disables |
+| `--no-examples` | off | do not show the model example sentences in the prompt |
 | `--seed` | none | reproducible sampling |
 | `--no-hint` | off | do not tell the model about the constraint in the prompt |
 | `--adapter-path` | none | LoRA adapter, for Phase 2 |
@@ -121,8 +123,8 @@ off, but that is untested on a real Qwen model.
    repetition penalty and a no-repeat-n-gram processor. Generation stops
    at any allowed special token.
 3. **Rerank** (`rerank.py`). Each candidate is scored by the same model
-   with **no mask**: mean per-token log-probability, minus a penalty for
-   repeated words. Higher is better.
+   with **no mask**: mean per-token log-probability, minus penalties for
+   repeated words and for non-words. Higher is better.
 4. **Verify** (`verify.py`). Every candidate is checked by a verifier
    that is written separately from the mask. Anything that fails is
    dropped and reported, never printed.
@@ -207,6 +209,13 @@ What this shows:
 - **Neither hand has** *the, and, is, it, to, of, that, for, with* —
   each mixes hands. So even good output reads like a telegram.
 
+**Added after these runs, not yet measured:** example sentences in the
+prompt and the non-word penalty. A story prompt ("Write me a story
+about a hungry cat.") had produced noise such as "Frrff. Frrr." and
+"Zzzt", which is what both changes target. Compare with
+`--no-examples --nonword-weight 0` to see their effect. One risk to
+watch: the model copying the examples instead of writing new text.
+
 Not yet tried: `--punctuation strict` and `none`,
 and whether `--no-hint` helps or hurts.
 
@@ -219,8 +228,10 @@ src/qwert/
   mask.py        vocabulary walk, special tokens, cache
   stats.py       surviving-vocabulary report
   processors.py  mlx-lm logits processors (mask, no-repeat n-gram)
+  examples.py    example sentences shown in the prompt
   generate.py    prompt building and masked sampling
   rerank.py      unmasked scoring and ranking
+  lexicon.py     real-word check for the non-word penalty
   models.py      model aliases and loading
   cli.py         command line
   finetune.py    Phase 2 stub

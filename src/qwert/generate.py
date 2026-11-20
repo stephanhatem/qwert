@@ -9,6 +9,7 @@ import mlx.core as mx
 from mlx_lm.generate import generate_step
 from mlx_lm.sample_utils import make_logits_processors, make_sampler
 
+from .examples import examples_block
 from .hands import LETTERS, Hand
 from .mask import TokenMask, _as_id_list
 from .processors import make_mask_processor, make_no_repeat_ngram_processor
@@ -40,13 +41,23 @@ def constraint_hint(hand: Hand) -> str:
     )
 
 
-def build_prompt(tokenizer: Any, prompt: str, hand: Hand, hint: bool = True) -> list[int]:
+def build_prompt(
+    tokenizer: Any,
+    prompt: str,
+    hand: Hand,
+    hint: bool = True,
+    examples: bool = True,
+) -> list[int]:
     """Tokenise the user prompt through the model's chat template.
 
-    The hint tells the model about the constraint. It goes in the user
-    turn because not every chat template (older Gemma) has a system role.
+    The hint tells the model about the constraint and the examples show
+    it the style. Both go in the user turn because not every chat
+    template (older Gemma) has a system role.
     """
-    content = f"{constraint_hint(hand)}\n\n{prompt}" if hint else prompt
+    parts = [constraint_hint(hand)] if hint else []
+    if examples:
+        parts.append(examples_block(hand))
+    content = "\n\n".join([*parts, prompt])
     if not getattr(tokenizer, "chat_template", None):
         return _as_id_list(tokenizer.encode(content))
     # enable_thinking=False: reasoning tags cannot be spelled with one hand,

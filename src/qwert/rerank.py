@@ -1,6 +1,8 @@
 """Rerank candidates by how natural the *unmasked* model finds them.
 
-    score = mean per-token log-probability  -  repeat_weight * repeat fraction
+    score = mean per-token log-probability
+            - repeat_weight  * share of repeated words
+            - nonword_weight * share of non-words
 
 The log-probability comes from the same model with no mask, so it
 measures fluency rather than rewarding text the mask forced. Higher
@@ -25,6 +27,7 @@ class Scored:
     score: float
     mean_logprob: float
     repeat_fraction: float
+    nonword_fraction: float = 0.0
 
     @property
     def chars(self) -> int:
@@ -37,6 +40,14 @@ def repeat_fraction(text: str) -> float:
     if not words:
         return 0.0
     return 1.0 - len(set(words)) / len(words)
+
+
+def nonword_fraction(text: str, is_word: Callable[[str], bool]) -> float:
+    """Share of words that ``is_word`` rejects, e.g. "Frrff" or "Zzzt"."""
+    words = [w.lower() for w in WORD.findall(text)]
+    if not words:
+        return 0.0
+    return sum(not is_word(w) for w in words) / len(words)
 
 
 def mean_logprob(model: Any, prompt_ids: Sequence[int], token_ids: Sequence[int]) -> float:
@@ -64,13 +75,16 @@ def rerank(
     top: int = 3,
     repeat_weight: float = 2.0,
     min_chars: int = 1,
+    is_word: Callable[[str], bool] | None = None,
+    nonword_weight: float = 3.0,
 ) -> tuple[list[Scored], int]:
     """Verify, score and sort candidates. Returns (best ``top``, rejected count).
 
     ``candidates`` need ``.text`` and ``.tokens``; ``score_fn`` maps token
     ids to a mean log-probability. Every candidate goes through the
     verifier, and anything that fails is dropped and counted, never shown.
-    Duplicates and texts shorter than ``min_chars`` are skipped.
+    Duplicates and texts shorter than ``min_chars`` are skipped. Without
+    ``is_word`` there is no non-word penalty.
     """
     rejected = 0
     seen: set[str] = set()
@@ -85,6 +99,8 @@ def rerank(
             continue
         logprob = score_fn(candidate.tokens)
         repeats = repeat_fraction(text)
-        scored.append(Scored(text, logprob - repeat_weight * repeats, logprob, repeats))
+        nonwords = nonword_fraction(text, is_word) if is_word else 0.0
+        score = logprob - repeat_weight * repeats - nonword_weight * nonwords
+        scored.append(Scored(text, score, logprob, repeats, nonwords))
     scored.sort(key=lambda s: s.score, reverse=True)
     return scored[:top], rejected

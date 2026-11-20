@@ -4,7 +4,7 @@ import pytest
 
 from qwert.hands import Hand
 from qwert.models import MODEL_ALIASES, resolve_model
-from qwert.rerank import repeat_fraction, rerank
+from qwert.rerank import nonword_fraction, repeat_fraction, rerank
 
 
 @dataclass
@@ -48,3 +48,32 @@ def test_model_resolution(monkeypatch):
     monkeypatch.setenv("QWERT_MODEL", "env/model")
     assert resolve_model(None) == "env/model"
     assert resolve_model("quality") == MODEL_ALIASES["quality"]
+
+
+REAL = {"a", "fat", "cat", "sat", "rex", "ate"}
+
+
+def test_nonword_fraction():
+    assert nonword_fraction("A fat cat sat.", REAL.__contains__) == 0.0
+    assert nonword_fraction("Frrff. Zzzt! Cat sat.", REAL.__contains__) == pytest.approx(0.5)
+    assert nonword_fraction("...", REAL.__contains__) == 0.0
+
+
+def test_rerank_penalises_non_words():
+    cands = [Cand("Frrff zzzt cat sat"), Cand("Rex ate")]
+    best, _ = rerank(cands, lambda _: -2.0, Hand.LEFT, is_word=REAL.__contains__, nonword_weight=3.0)
+    assert [b.text for b in best] == ["Rex ate", "Frrff zzzt cat sat"]
+    assert best[1].nonword_fraction == pytest.approx(0.5)
+    assert best[1].score == pytest.approx(-2.0 - 3.0 * 0.5)
+    # Without a word list the penalty is off and the order is the input order.
+    best, _ = rerank(cands, lambda _: -2.0, Hand.LEFT)
+    assert best[0].text == "Frrff zzzt cat sat" and best[0].nonword_fraction == 0.0
+
+
+def test_wordfreq_word_check_if_installed():
+    pytest.importorskip("wordfreq")
+    from qwert.lexicon import load_word_check
+
+    is_word = load_word_check()
+    assert all(is_word(w) for w in ("rex", "starved", "zax", "a"))
+    assert not any(is_word(w) for w in ("frrff", "frrr", "zzzt"))

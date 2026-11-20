@@ -51,6 +51,11 @@ def build_parser() -> argparse.ArgumentParser:
     gen.add_argument("--no-repeat-ngram", type=int, default=3, help="0 disables")
     gen.add_argument("--repeat-weight", type=float, default=2.0,
                      help="rerank penalty per unit of repeated-word fraction")
+    gen.add_argument("--nonword-weight", type=float, default=3.0,
+                     help="rerank penalty per unit of non-word fraction; 0 disables "
+                     "(needs the wordfreq package)")
+    gen.add_argument("--no-examples", action="store_true",
+                     help="do not show the model example sentences in the prompt")
     gen.add_argument("--min-chars", type=int, default=1, help="skip shorter candidates")
     gen.add_argument("--seed", type=int)
     gen.add_argument("--no-hint", action="store_true",
@@ -92,6 +97,7 @@ def _load(args: argparse.Namespace):
 
 def cmd_generate(args: argparse.Namespace) -> int:
     from .generate import SamplingConfig, build_prompt, sample_candidates
+    from .lexicon import load_word_check
     from .rerank import mean_logprob, rerank
 
     model, tokenizer, mask, hand, punctuation = _load(args)
@@ -104,7 +110,13 @@ def cmd_generate(args: argparse.Namespace) -> int:
         no_repeat_ngram=args.no_repeat_ngram,
         seed=args.seed,
     )
-    prompt_ids = build_prompt(tokenizer, args.prompt, hand, hint=not args.no_hint)
+    prompt_ids = build_prompt(
+        tokenizer, args.prompt, hand, hint=not args.no_hint, examples=not args.no_examples
+    )
+    is_word = load_word_check() if args.nonword_weight else None
+    if args.nonword_weight and is_word is None:
+        print("note: wordfreq is not installed, so non-words are not penalised "
+              "(pip install 'qwert[stats]')", file=sys.stderr)
     started = time.perf_counter()
 
     def progress(done: int, candidate) -> None:
@@ -125,6 +137,8 @@ def cmd_generate(args: argparse.Namespace) -> int:
         top=args.top,
         repeat_weight=args.repeat_weight,
         min_chars=args.min_chars,
+        is_word=is_word,
+        nonword_weight=args.nonword_weight,
     )
     if rejected:
         print(f"warning: {rejected} candidate(s) failed the verifier and were dropped",
@@ -135,7 +149,8 @@ def cmd_generate(args: argparse.Namespace) -> int:
     for rank, result in enumerate(results, start=1):
         print(
             f"[{rank}] score {result.score:.3f}  "
-            f"(logprob {result.mean_logprob:.3f}, repeats {result.repeat_fraction:.0%})  "
+            f"(logprob {result.mean_logprob:.3f}, repeats {result.repeat_fraction:.0%}, "
+            f"non-words {result.nonword_fraction:.0%})  "
             f"{result.chars} chars"
         )
         print(result.text)
