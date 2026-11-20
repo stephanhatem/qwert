@@ -94,15 +94,14 @@ than ordinary 4-bit ones. A 12B model at 4 bits is roughly 7-8 GB of
 weights, which fits in 16 GB with the browser closed; anything much
 larger does not.
 
-**What I could not verify.** The Gemma 4 repo names come from a web
-search of the mlx-community "Gemma 4 QAT" collection, and mlx-lm 0.32.2
-contains Gemma 4 model code. The machine this was written on has no
-access to Hugging Face, so I have not downloaded or loaded either
-model, and I do not know their exact sizes or speed on an M4. If a
-model fails to load, try `--model fallback`, or any Qwen build such as
-`mlx-community/Qwen3-4B-4bit` (Qwen templates have a thinking mode;
-qwert asks the template to turn it off, but I have not tested that on a
-real Qwen model).
+**What has been verified.** The `default` model downloads, loads and
+generates on a 16 GB M4 (see results below). The mlx-lm API was read
+from the 0.32.2 source. **Not yet verified:** the `quality` model (the
+repo name comes from a web search of the mlx-community "Gemma 4 QAT"
+collection; it has not been loaded), and the fallbacks. Any other MLX
+repo works with `--model`, for example `mlx-community/Qwen3-4B-4bit`.
+Qwen templates have a thinking mode; qwert asks the template to turn it
+off, but that is untested on a real Qwen model.
 
 ## How it works
 
@@ -140,26 +139,72 @@ takes `sampler=` and `logits_processors=`.
   key they stand for.
 - Digits: 1-5 left, 6-0 right, in every punctuation mode.
 
-## Left vs right: what to expect
+## Left vs right: results
 
-**I have not been able to run a real model**, so these are expectations
-from the keyboard itself, not measurements. Run `qwert stats` for both
-hands and replace this section with real numbers.
+Measured on a MacBook Air M4 (16 GB) with the `default` model,
+`mlx-community/gemma-4-E4B-it-qat-4bit`, punctuation `free`. This is
+one run per hand with default settings (`-n 20 --top 3`), so treat the
+scores as an indication, not a benchmark.
 
-- **Left is much easier.** It has 15 letters including `e a t r s d`,
-  the backbone of English: *a, we, as, at, are, was, were, see, get,
-  best, great, after, water, street*. Full, if odd, sentences are
-  possible ("We saw a great sweater").
-- **Right is hard.** 11 letters, the vowels `i o u` (and `y`) but no
-  `e`, `a`, `t` or `s`: *I, you, in, on, my, no, oh, up, him, only,
-  look, moon, pink, jolly*. No plurals in `-s`, no past tense in `-ed`.
-  Expect shorter, stranger output, lower scores and more looping.
+Vocabulary (`qwert stats`, 262,144 tokens in total):
+
+| | Left | Right |
+| --- | --- | --- |
+| Surviving tokens | 13,946 (5.3%) | 7,731 (2.9%) |
+| Whole English words | 2,865 | 813 |
+| Most common | a was be as are at we were get after see great best state better | in i you on my up no only him look oh john million july upon |
+
+The whole-word counts include a few single letters (`s`, `d`, `t`),
+which the tokenizer stores as word-start tokens.
+
+Best three of 20, prompt "Write a short poem about the sea" (left) and
+"... about the moon" (right):
+
+| | Left | Right |
+| --- | --- | --- |
+| Scores | -1.37, -1.59, -1.77 | -1.96, -2.33, -2.35 |
+| Length | 72-79 chars | 45-57 chars |
+
+Left, best result:
+
+```
+Sea vast, free.
+
+Waves crest fast,
+Wet breeze gas.
+
+Far west,
+Safe rest.
+```
+
+Right, second result (the first was shorter and stranger):
+
+```
+Moon, you loom,
+No hum, no jump.
+Only milk,
+Loom in lull.
+```
+
+What this shows:
+
+- **Left is easier, as expected.** Nearly twice the tokens and about
+  3.5 times the whole words, with `e a t r s d` available. The poems
+  rhyme (*crest / west / rest / best*) and mostly make sense.
+- **Right is harder but not hopeless.** No `e`, `a`, `t` or `s`, so no
+  plurals and no past tense. Output is shorter, scores are about 0.6
+  lower, and non-words slip in ("in lu"). Still, "Moon, you loom" is a
+  real line.
+- **Candidates cluster.** All three left-hand results opened with
+  "Sea vast". A higher `--temperature` (1.1) and a larger `-n` should
+  give more variety; not yet tried.
+- **The mask shows in places**: "Wet breeze gas", "Only milk". The
+  model takes the nearest allowed word.
 - **Neither hand has** *the, and, is, it, to, of, that, for, with* —
   each mixes hands. So even good output reads like a telegram.
 
-Things worth checking once it runs: the surviving-token share for each
-hand, whether the right hand needs a stronger repetition penalty, and
-whether `--no-hint` helps or hurts.
+Not yet tried: the `quality` model, `--punctuation strict` and `none`,
+and whether `--no-hint` helps or hurts.
 
 ## Layout
 

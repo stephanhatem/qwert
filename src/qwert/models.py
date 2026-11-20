@@ -3,14 +3,10 @@
 Resolution order: ``--model`` flag, then the ``QWERT_MODEL`` environment
 variable, then the ``default`` alias below.
 
-NOTE ON VERIFICATION. These repo names were found by web search (they
-are listed in the mlx-community "Gemma 4 QAT" collection), and mlx-lm
-0.32.2 ships ``gemma4`` / ``gemma4_text`` model code. I could not
-download or load them where this was written (no Hugging Face access),
-so exact download sizes and load behaviour on a 16 GB machine are
-unconfirmed. If a repo fails to load, pass any other MLX repo or local
-path with ``--model``; ``fallback`` and ``fallback-quality`` are older
-Gemma 3 builds kept as known-good alternatives.
+NOTE ON VERIFICATION. ``default`` has been run on a 16 GB M4. The
+other repo names come from a web search (the mlx-community "Gemma 4
+QAT" collection) or from memory, and have not been loaded. If one
+fails, pass any other MLX repo or local path with ``--model``.
 """
 
 from __future__ import annotations
