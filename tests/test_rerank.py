@@ -67,7 +67,7 @@ def test_rerank_penalises_non_words():
     assert best[1].score == pytest.approx(-2.0 - 3.0 * 0.5)
     # Without a word list the penalty is off and the order is the input order.
     best, _ = rerank(cands, lambda _: -2.0, Hand.LEFT)
-    assert best[0].text == "Frrff zzzt cat sat" and best[0].nonword_fraction == 0.0
+    assert best[0].text == "Frrff zzzt cat sat" and best[0].nonword_fraction is None
 
 
 def test_wordfreq_word_check_if_installed():

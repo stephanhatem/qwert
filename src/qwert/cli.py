@@ -147,10 +147,12 @@ def cmd_generate(args: argparse.Namespace) -> int:
         print("no valid candidates; try a higher -n or --max-tokens", file=sys.stderr)
         return 1
     for rank, result in enumerate(results, start=1):
+        nonwords = result.nonword_fraction
+        nonword_text = "off" if nonwords is None else f"{nonwords:.0%}"
         print(
             f"[{rank}] score {result.score:.3f}  "
             f"(logprob {result.mean_logprob:.3f}, repeats {result.repeat_fraction:.0%}, "
-            f"non-words {result.nonword_fraction:.0%})  "
+            f"non-words {nonword_text})  "
             f"{result.chars} chars"
         )
         print(result.text)

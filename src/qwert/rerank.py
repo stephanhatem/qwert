@@ -27,7 +27,7 @@ class Scored:
     score: float
     mean_logprob: float
     repeat_fraction: float
-    nonword_fraction: float = 0.0
+    nonword_fraction: float | None = None  # None: not measured (no word list)
 
     @property
     def chars(self) -> int:
@@ -99,8 +99,8 @@ def rerank(
             continue
         logprob = score_fn(candidate.tokens)
         repeats = repeat_fraction(text)
-        nonwords = nonword_fraction(text, is_word) if is_word else 0.0
-        score = logprob - repeat_weight * repeats - nonword_weight * nonwords
+        nonwords = nonword_fraction(text, is_word) if is_word else None
+        score = logprob - repeat_weight * repeats - nonword_weight * (nonwords or 0.0)
         scored.append(Scored(text, score, logprob, repeats, nonwords))
     scored.sort(key=lambda s: s.score, reverse=True)
     return scored[:top], rejected
