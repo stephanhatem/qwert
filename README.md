@@ -82,7 +82,7 @@ The model is never hard-coded: pass `--model`, or set `QWERT_MODEL`.
 | Alias | Repo | Use |
 | --- | --- | --- |
 | `default` | `mlx-community/gemma-4-E4B-it-qat-4bit` | ~4B, fast, small |
-| `quality` | `mlx-community/gemma-4-12B-it-qat-4bit` | ~12B, better prose |
+| `quality` | `mlx-community/gemma-4-12B-it-qat-4bit` | ~12B; **did not run on 16 GB**, see below |
 | `fallback` | `mlx-community/gemma-3-4b-it-qat-4bit` | older, if Gemma 4 will not load |
 | `fallback-quality` | `mlx-community/gemma-3-12b-it-qat-4bit` | older 12B |
 
@@ -90,16 +90,19 @@ Why Gemma: instruction-tuned, no "thinking" mode to switch off, and a
 large SentencePiece vocabulary (about 262k entries according to
 mlx-lm's Gemma 4 model code), which gives the mask more whole words to
 keep. Quantisation-aware-trained (QAT) 4-bit builds lose less quality
-than ordinary 4-bit ones. The `quality` model is an 11 GB
-download, which is tight on a 16 GB machine: close other apps first,
-and expect it to be much slower than `default` if macOS starts
-swapping.
+than ordinary 4-bit ones.
+
+**The `quality` model is too big for a 16 GB Mac, as tested.** It is an
+11 GB download. On a 16 GB M4 Air the first run sat silent after the
+download for a long time, ignored Ctrl+C, and had to be force-stopped
+(Ctrl+\\, or `pkill -9 -f qwert` from another terminal). Memory
+pressure was not measured, but swapping is the likely cause. Use it
+only with more memory. A mid-sized alternative that fits 16 GB has not
+been found or tested yet; `default` is the model to use on this machine.
 
 **What has been verified.** The `default` model downloads, loads and
 generates on a 16 GB M4 (see results below). The mlx-lm API was read
-from the 0.32.2 source. **Not yet verified:** the `quality` model (the
-repo name comes from a web search of the mlx-community "Gemma 4 QAT"
-collection; it has not been loaded), and the fallbacks. Any other MLX
+from the 0.32.2 source. **Not yet verified:** the fallbacks. Any other MLX
 repo works with `--model`, for example `mlx-community/Qwen3-4B-4bit`.
 Qwen templates have a thinking mode; qwert asks the template to turn it
 off, but that is untested on a real Qwen model.
@@ -204,7 +207,7 @@ What this shows:
 - **Neither hand has** *the, and, is, it, to, of, that, for, with* —
   each mixes hands. So even good output reads like a telegram.
 
-Not yet tried: the `quality` model, `--punctuation strict` and `none`,
+Not yet tried: `--punctuation strict` and `none`,
 and whether `--no-hint` helps or hurts.
 
 ## Layout

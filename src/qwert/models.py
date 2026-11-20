@@ -17,7 +17,7 @@ from typing import Any
 MODEL_ALIASES: dict[str, str] = {
     # ~4B, 4-bit: fast, leaves plenty of headroom in 16 GB.
     "default": "mlx-community/gemma-4-E4B-it-qat-4bit",
-    # ~12B, 4-bit: noticeably better prose, several GB of weights.
+    # ~12B, 4-bit: an 11 GB download. Did not run usably on a 16 GB M4 Air.
     "quality": "mlx-community/gemma-4-12B-it-qat-4bit",
     "fallback": "mlx-community/gemma-3-4b-it-qat-4bit",
     "fallback-quality": "mlx-community/gemma-3-12b-it-qat-4bit",
