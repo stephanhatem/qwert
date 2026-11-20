@@ -1,0 +1,31 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "qwert"
+version = "0.1.0"
+description = "Constrained text generation: every letter typed by one hand on a QWERTY keyboard."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    # API checked against mlx-lm 0.32.2 (generate_step, make_sampler,
+    # make_logits_processors, load). The (tokens, logits) -> logits
+    # logits-processor signature is what qwert relies on.
+    "mlx-lm>=0.32",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+# Optional: rank surviving vocabulary words by real English frequency.
+stats = ["wordfreq>=3"]
+
+[project.scripts]
+qwert = "qwert.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/qwert"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src", "tests"]
